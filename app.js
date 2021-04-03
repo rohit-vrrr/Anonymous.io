@@ -66,6 +66,25 @@ app.get('/register', function(req, res) {
 
 app.post('/register', function(req, res) {
 
+  User.register({username: req.body.username}, req.body.password, function(err, user) {
+    if(err) {
+      console.log(err);
+      res.redirect('/register');
+    } else {
+      passport.authenticate("local")(req, res, function() {
+        res.redirect('/secrets');
+      });
+    }
+  });
+
+});
+
+app.get('/secrets', function(req, res) {
+  if(req.isAuthenticated()) {
+    res.render("secrets");
+  } else {
+    res.redirect("/login");
+  }
 });
 
 app.listen(3000, function() {
