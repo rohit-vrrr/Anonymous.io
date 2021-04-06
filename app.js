@@ -92,12 +92,13 @@ passport.use(new FacebookStrategy({
   }
 ));
 
+//////////////////// Home route ////////////////////
 app.route('/')
   .get(function(req, res) {
     res.render("home");
   });
 
-// Google route
+//////////////////// Google route ////////////////////
 app.route('/auth/google')
   .get(passport.authenticate("google", { scope: ['profile'] }));
 
@@ -106,7 +107,7 @@ app.route('/auth/google/anonymous')
     res.redirect('/secrets');
   });
 
-// Facebook route
+//////////////////// Facebook route ////////////////////
 app.route('/auth/facebook')
   .get(passport.authenticate("facebook"));
 
@@ -115,6 +116,7 @@ app.route('/auth/facebook/anonymous')
     res.redirect('/secrets');
   });
 
+//////////////////// Login route ////////////////////
 app.route('/login')
   .get(function(req, res) {
     res.render("login");
@@ -139,6 +141,7 @@ app.route('/login')
 
   });
 
+//////////////////// Register route ////////////////////
 app.route('/register')
   .get(function(req, res) {
     res.render("register");
@@ -159,6 +162,7 @@ app.route('/register')
 
   });
 
+//////////////////// Secrets route ////////////////////
 app.route('/secrets')
   .get(function(req, res) {
     User.find({"secret": {$ne: null}}, function(err, foundUsers) {
@@ -172,6 +176,7 @@ app.route('/secrets')
     });
   });
 
+//////////////////// Submit route ////////////////////
 app.route('/submit')
   .get(function(req, res) {
     if(req.isAuthenticated()) {
@@ -198,6 +203,7 @@ app.route('/submit')
     });
   });
 
+//////////////////// Logout route ////////////////////
 app.route('/logout')
   .get(function(req, res) {
     req.logout();
