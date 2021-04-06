@@ -8,8 +8,9 @@ const mongoose = require("mongoose");
 const session = require("express-session");
 const passport = require("passport");
 const passportLocalMongoose = require("passport-local-mongoose");
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const findOrCreate = require('mongoose-findorcreate');
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const FacebookStrategy = require("passport-facebook").Strategy;
+const findOrCreate = require("mongoose-findorcreate");
 
 const app = express();
 
@@ -37,7 +38,8 @@ mongoose.set("useCreateIndex", true);
 const userSchema = new mongoose.Schema({
   email: String,
   password: String,
-  googleId: String
+  googleId: String,
+  facebookId: String
 });
 
 // initializing plugin for 'passport-local-mongoose'
@@ -75,10 +77,26 @@ passport.use(new GoogleStrategy({
   }
 ));
 
-app.get('/', function(req, res) {
-  res.render("home");
-});
+// Facebook configure Strategy
+passport.use(new FacebookStrategy({
+    clientID: process.env.CLIENT_ID_FB,
+    clientSecret: process.env.CLIENT_SECRET_FB,
+    callbackURL: "http://localhost:3000/auth/facebook/anonymous"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    // console.log(profile);
+    User.findOrCreate({ facebookId: profile.id }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
 
+app.route('/')
+  .get(function(req, res) {
+    res.render("home");
+  });
+
+// Google route
 app.route('/auth/google')
   .get(passport.authenticate("google", { scope: ['profile'] }));
 
@@ -87,60 +105,73 @@ app.route('/auth/google/anonymous')
     res.redirect('/secrets');
   });
 
-app.get('/login', function(req, res) {
-  res.render("login");
-});
+// Facebook route
+app.route('/auth/facebook')
+  .get(passport.authenticate("facebook"));
 
-app.post('/login', function(req, res) {
-
-  const user = new User({
-    username: req.body.username,
-    password: req.body.password
+app.route('/auth/facebook/anonymous')
+  .get(passport.authenticate("facebook", { failureRedirect: '/login' }), function(req, res) {
+    res.redirect('/secrets');
   });
 
-  req.login(user, function(err) {
-    if(err) {
-      console.log(err);
+app.route('/login')
+  .get(function(req, res) {
+    res.render("login");
+  })
+
+  .post(function(req, res) {
+
+    const user = new User({
+      username: req.body.username,
+      password: req.body.password
+    });
+
+    req.login(user, function(err) {
+      if(err) {
+        console.log(err);
+      } else {
+        passport.authenticate("local")(req, res, function() {
+          res.redirect('/secrets');
+        });
+      }
+    });
+
+  });
+
+app.route('/register')
+  .get(function(req, res) {
+    res.render("register");
+  })
+
+  .post(function(req, res) {
+
+    User.register({username: req.body.username}, req.body.password, function(err, user) {
+      if(err) {
+        console.log(err);
+        res.redirect('/register');
+      } else {
+        passport.authenticate("local")(req, res, function() {
+          res.redirect('/secrets');
+        });
+      }
+    });
+
+  });
+
+app.route('/secrets')
+  .get(function(req, res) {
+    if(req.isAuthenticated()) {
+      res.render("secrets");
     } else {
-      passport.authenticate("local")(req, res, function() {
-        res.redirect('/secrets');
-      });
+      res.redirect("/login");
     }
   });
 
-});
-
-app.get('/register', function(req, res) {
-  res.render("register");
-});
-
-app.post('/register', function(req, res) {
-
-  User.register({username: req.body.username}, req.body.password, function(err, user) {
-    if(err) {
-      console.log(err);
-      res.redirect('/register');
-    } else {
-      passport.authenticate("local")(req, res, function() {
-        res.redirect('/secrets');
-      });
-    }
+app.route('/logout')
+  .get(function(req, res) {
+    req.logout();
+    res.redirect('/');
   });
-
-});
-
-app.get('/secrets', function(req, res) {
-  if(req.isAuthenticated()) {
-    res.render("secrets");
-  } else {
-    res.redirect("/login");
-  }
-});
-
-app.get('/logout', function(req, res) {
-  req.logout();
-  res.redirect('/');
-});
 
 app.listen(3000, function() {
   console.log("Server listening on port 3000");
